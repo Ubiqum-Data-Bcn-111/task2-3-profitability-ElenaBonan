@@ -66,8 +66,8 @@ for(i in 1:(ncol(MyData)) ){
   if (  is.numeric( MyData[,i] ) || is.integer(MyData[,i]) )
   {print( plot_ly( y = MyData[,i], name = names(MyData)[i], type = 'box') )}}
 # I delate the outliers of the volume 
-MyData  <- subset(MyData, Volume != 11204)
-MyData <- subset(MyData, Volume != 7036)
+#MyData  <- subset(MyData, Volume != 11204)
+MyData <- subset(MyData, Volume < 7036)
 # I keep the outliers of the other variables because they are too much.
 
 # I eliminate the warranties because probably there was an error.
@@ -83,6 +83,110 @@ testing <- MyData[-inTraining,]
 #check the distribution of the two subsets.
 
 
+#Prepare the different training
+training1 <- training[,c(2,10)]
+training2 <- training[,c(2,6,10)]
+training3 <- training[,c(2,6,4,10)]
+
+traininglist <-[training1, training2, training3]
+
+resultsMLR <- c()
+resultsRF  <- c()
+resultsSVM <- c()
+resultsGBT <- c()
+
+#Train Control for the models
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+
+#MULTIPLE LINEAR MODEL
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsMLR <- c()
+    modelsMLR <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "lm", preProcess=c("center","scale"))
+  modelsMLR <- cbind(modelsMLR,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsMLR <- cbind(resultsMLR,performance1)
+}
+colnames(resultsMLR) <- c("MLR Model 1V","MLR Model 2V","MLR Model 3V","MLR Model 4V","MLR Model 5V","MLR Model 6V")
+colnames(modelsMLR) <- c("RF Model 1V","RF Model 2V","RF Model 3V","RF Model 4V","RF Model 5V","RF Model 6V")
+resultsMLR
+modelsMLR
+
+#RANDOM FOREST
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsRF <- c()
+    modelsRF <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "rf", trainControl = control, importance = TRUE, preProcess=c("center","scale"), tuneLenght=5)
+  modelsRF <- cbind(modelsRF,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsRF <- cbind(resultsRF,performance1)
+}
+colnames(resultsRF) <- c("RF Model 1V","RF Model 2V","RF Model 3V","RF Model 4V","RF Model 5V","RF Model 6V")
+colnames(modelsRF) <- c("RF Model 1V","RF Model 2V","RF Model 3V","RF Model 4V","RF Model 5V","RF Model 6V")
+resultsRF
+modelsRF
+
+#SVM
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsSVM <- c()
+    modelsSVM <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "svmRadial", trainControl = control, importance = TRUE, preProcess=c("center","scale"), tuneLenght=5)
+  modelsSVM <- cbind(modelsSVM,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsSVM <- cbind(resultsSVM,performance1)
+}
+colnames(resultsSVM) <- c("SVM Model 1V","SVM Model 2V","SVM Model 3V","SVM Model 4V","SVM Model 5V","SVM Model 6V")
+colnames(modelsSVM) <- c("SVM Model 1V","SVM Model 2V","SVM Model 3V","SVM Model 4V","SVM Model 5V","SVM Model 6V")
+resultsSVM
+modelsSVM
+
+#GBM
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsGBT <- c()
+    modelsGBT <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "xgbTree", trainControl = control, importance = TRUE, preProcess=c("center","scale"), tuneLenght=5)
+  modelsGBT <- cbind(modelsGBT,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsGBT <- cbind(resultsGBT,performance1)
+}  
+
+colnames(resultsGBT) <- c("GBT Model 1V","GBT Model 2V","GBT Model 3V","GBT Model 4V","GBT Model 5V","GBT Model 6V")
+colnames(modelsGBT) <- c("GBT Model 1V","GBT Model 2V","GBT Model 3V","GBT Model 4V","GBT Model 5V","GBT Model 6V")
+resultsGBT
+modelsGBT
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 p <- plot_ly(y = training$Volume, type = "box", name = 'training') %>%
   add_trace(y = testing$Volume, name='testing')
 p
@@ -96,7 +200,8 @@ fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
 MyData1 <- MyData[,c(2,10)]
 MyData2 <- MyData[,c(2,6,10)]
 MyData3 <- MyData[,c(2,6,4,10)]
-
+[,c(2,6,10)]
+[,c(2,6,4,10)]
 training1 <- MyData1[inTraining,]
 training2 <- MyData2[inTraining,]
 training3 <- MyData3[inTraining,]
@@ -307,3 +412,106 @@ mo <- train(Volume~., data = train, method = "rf", trControl=fitControl, preProc
 cor(MyData3)
 library(rgl)
 plot3d(MyData3$x4StarReviews, MyData3$PositiveServiceReview, MyData$Volume)
+
+####--------------------
+
+# I want to try different models using different subsets of variables
+tree <- rpart(Volume~., data=MyData, cp=.001)
+rpart.plot(tree, box.palette="RdBu", shadow.col="gray", nn=TRUE)
+
+
+# Let us create a Data frame with the variables in order of importance 
+variables = names(tree$variable.importance)
+tree$variable.importance
+indicesVolume = which(names(training) == 'Volume')
+indices = c(indicesVolume)
+listtraining = list()
+#summary(tree)
+#varImp(tree, scale = FALSE)
+for (i in variables){
+  var = which(names(training)== i)
+  indices = c(indices, var)
+  train = training[,indices]
+  listtraining = list.append(listtraining,train)
+}
+
+
+#Train Control for the models
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+
+resultsMLR = c()
+modelsMLR = c()
+name = c()
+for (i in 1:length(listtraining)){
+  if (i == 1){
+    resultsMLR <- c()
+    modelsMLR <-c()
+  }
+set.seed(123)
+mod <- train(Volume ~ ., data = data.frame(listtraining[i]), method = "lm", preProcess=c("center","scale"))
+modelsMLR <- cbind(modelsMLR,mod)
+prediction1 <- predict(mod,testing)
+performance <- postResample(prediction1,testing$Volume)
+resultsMLR <- cbind(resultsMLR,performance)
+name = c(name,paste("MLR Model ",i,"V",sep=""))
+}
+colnames(resultsMLR) <- name
+colnames(modelsMLR) <- name
+
+resultsMLR
+
+
+#RANDOM FOREST
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsRF <- c()
+    modelsRF <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "rf", trainControl = control, importance = TRUE, preProcess=c("center","scale"), tuneLenght=5)
+  modelsRF <- cbind(modelsRF,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsRF <- cbind(resultsRF,performance1)
+}
+colnames(resultsRF) <- c("RF Model 1V","RF Model 2V","RF Model 3V","RF Model 4V","RF Model 5V","RF Model 6V")
+colnames(modelsRF) <- c("RF Model 1V","RF Model 2V","RF Model 3V","RF Model 4V","RF Model 5V","RF Model 6V")
+resultsRF
+modelsRF
+
+#SVM
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsSVM <- c()
+    modelsSVM <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "svmRadial", trainControl = control, importance = TRUE, preProcess=c("center","scale"), tuneLenght=5)
+  modelsSVM <- cbind(modelsSVM,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsSVM <- cbind(resultsSVM,performance1)
+}
+colnames(resultsSVM) <- c("SVM Model 1V","SVM Model 2V","SVM Model 3V","SVM Model 4V","SVM Model 5V","SVM Model 6V")
+colnames(modelsSVM) <- c("SVM Model 1V","SVM Model 2V","SVM Model 3V","SVM Model 4V","SVM Model 5V","SVM Model 6V")
+resultsSVM
+modelsSVM
+
+#GBM
+for (i in 1:length(traininglist)){
+  if (i == 1){
+    resultsGBT <- c()
+    modelsGBT <-c()
+  }
+  set.seed(123)
+  rf <- train(Volume ~ ., data = data.frame(traininglist[i]), method = "xgbTree", trainControl = control, importance = TRUE, preProcess=c("center","scale"), tuneLenght=5)
+  modelsGBT <- cbind(modelsGBT,rf)
+  prediction1 <- predict(rf,testing)
+  performance1 <- postResample(prediction1,testing$Volume)
+  resultsGBT <- cbind(resultsGBT,performance1)
+}  
+
+
+for (i in 1:10){print(paste('ciao',i))}
+
+
